@@ -6,6 +6,11 @@ FILE* fp;
 
 long *t, *nil;
 
+int var_count = 0;
+long* var[10] = {};
+long* value[10] = {};
+
+// basic function
 long* atom(long* x);
 long* eq(long* x, long* y);
 long* car(long* x);
@@ -124,6 +129,7 @@ long* parentheses(){
         if(cnt == parentheses_count) return begin;
     }
 }
+
 long* expr(){
     char c;
     while(true){
@@ -148,26 +154,65 @@ long* expr(){
     }
 }
 
-int var_count = 0;
-long* var[10] = {};
-long* value[10] = {};
 long* eval(long* p){
-    if(atom(p) == t){
-        for(int i = 0; i < var_count; i++){
-            if(eq(p, var[i]) == t) return value[i];
-        }
-        return p;
+    if(atom(p) == t) return p;
+    for(int i = var_count - 1; i >= 0; i--){
+        if(eq(p, var[i]) == t) return value[i];
     }
+
+    long* token = car(p);
+    long* args = cdr(p);
+
+    // basic function
+    if(equal(token, "eq")) return eq(eval(car(args)), eval(car(cdr(args))));
+    else if(equal(token, "car")) return car(eval(car(args)));
+    else if(equal(token, "cdr")) return cdr(eval(car(args)));
+    else if(equal(token, "atom")) return atom(car(args));
+    else if(equal(token, "cons")) return cons(eval(car(args)), eval(car(cdr(args))));
+
+    // special form
+    else if(equal(token, "cond")){
+        while(eq(args, nil) == nil){
+            long* condition = car(car(args));
+            long* expression = car(cdr(car(args)));
+            if(eval(condition) == t) return eval(expression);
+            args = cdr(args);
+        }
+        return nil;
+    }
+    else if(equal(token, "lambda")){
+        return args;
+    }
+    else if(equal(token, "define")){
+        var[var_count] = car(args);
+        value[var_count] = eval(car(cdr(args)));
+        var_count++;
+        return value[var_count - 1];
+    }
+    
+    // lambda expression
     else{
-        long* token = car(p);
-        long* args = cdr(p);
-        if(equal(token, "eq")) return eq(eval(car(args)), eval(car(cdr(args))));
-        else if(equal(token, "car")) return car(eval(car(args)));
-        else if(equal(token, "cdr")) return cdr(eval(car(args)));
-        else if(equal(token, "atom")) return atom(car(args));
-        else if(equal(token, "cons")) return cons(eval(car(args)), eval(car(cdr(args))));
+        token = eval(token);
+        long* params = car(token);
+        int n = 0;
+        while(eq(params, nil) == nil){
+            var[var_count] = car(params);
+            value[var_count] = eval(car(args));
+            var_count++;
+            n++;
+            params = cdr(params);
+            args = cdr(args);
+        }
+        long* ret = eval(car(cdr(token)));
+        for(int i = 0; i < n; i++){
+            var_count--;
+            var[var_count] = 0;
+            value[var_count] = 0;
+        }
+        return ret;
     }
 }
+
 void print(long* p){
     if(atom(p) == t) printf("%d",*p);
     else{
@@ -183,15 +228,18 @@ void print(long* p){
     }
 }
 
-long main(int argc, char** argv){
+int main(int argc, char** argv){
     t = calloc(2, sizeof(long));
     nil = calloc(2, sizeof(long));
     *t = 1;
 
     fp = fopen(argv[1], "r");
-    long* begin = expr();
-    print(begin);
-    printf("\n");
-    print(eval(begin));
+    while(!feof(fp)){
+        long* begin = expr();
+        print(begin);
+        printf("\n");
+        print(eval(begin));
+        printf("\n");
+    }
     fclose(fp);
 }
