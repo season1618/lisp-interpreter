@@ -12,12 +12,13 @@ long* car(long* x);
 long* cdr(long* y);
 long* cons(long* x, long* y);
 
-bool equal(char* a, char* b, int n);
+bool equal(long* a, char* b);
 long* number(long i);
 char* function();
 long* parentheses();
-long* expression();
+long* expr();
 
+// basic function
 long* atom(long* x){
     if(*(x + 1) == *nil) return t;
     else return nil;
@@ -51,12 +52,18 @@ long* cons(long* x, long* y){
     return p;
 }
 
-bool equal(char* a, char* b, int n){
-    for(int i = 0; i < n; i++){
-        if(*(a + i) != *(b + i)) return false;
+bool equal(long* a, char* b){
+    for(int i = 0; i < 8; i++){
+        if(*a != (long)*b) return false;
+        else if(*b == '\0') return true;
+        a = (long*)*(a + 1);
+        b++;
     }
-    return true;
 }
+
+// parse
+int parentheses_count = 0;
+int line_number = 0;
 
 long* number(long i){
     long* p = calloc(2, sizeof(long));
@@ -64,8 +71,11 @@ long* number(long i){
     char c;
     while(true){
         c = fgetc(fp);
-        if(c == ' ' || c == ')'){
-            printf("%d\n",*p);
+        if(c == '(') parentheses_count++;
+        else if(c == ')') parentheses_count--;
+        else if(c == '\n') line_number++;
+        if(c == '(' || c == ')' || c == ' ' || c == '\n'){
+            //printf("%d",*p);
             return p;
         }
         *p *= 10;
@@ -73,57 +83,111 @@ long* number(long i){
     }
 }
 
-char* function(){
-    char* func = calloc(5, sizeof(char));
-    char c;
-    for(int i = 0; i < 5; i++){
+long* symbol(char c){
+    long* begin = calloc(2, sizeof(long));
+    long* p = begin;
+    long* q = calloc(2, sizeof(long));
+    *q = (long)c;
+    *p = (long)q;
+    while(true){
         c = fgetc(fp);
-        if(c == ' ') return func;
-        *(func + i) = c;
+        if(c == '(') parentheses_count++;
+        else if(c == ')') parentheses_count--;
+        else if(c == '\n') line_number++;
+        if(c == '(' || c == ')' || c == ' ' || c == '\n'){
+            *(p + 1) = (long)nil;
+            return begin;
+        }
+        long* q = calloc(2, sizeof(long));
+        long* r = calloc(2, sizeof(long));
+        *r = (long)c;
+        *q = (long)r;
+        *(p + 1) = (long)q;
+        p = q;
     }
 }
 
 long* parentheses(){
-    char* func = function();
-    if(equal(func, "eq", 2)){
-        long* a = expression();
-        long* b = expression();
-        return eq(a, b);
-    }
-    else if(equal(func, "car", 3)){
-        long* p = expression();
-        return car(p);
-    }else if(equal(func, "cdr", 3)){
-        long* p = expression();
-        return cdr(p);
-    }
-    else if(equal(func, "atom", 4)){
-        long* p = expression();
-        return atom(p);
-    }else if(equal(func, "cons", 4)){
-        long* a = expression();
-        long* b = expression();
-        return cons(a, b);
+    long *begin = calloc(2, sizeof(long));
+    long *p, *q; p = begin;
+    int cnt = parentheses_count - 1;
+    while(true){
+        *p = (long)expr();
+        if(*p == (long)nil) return begin;
+        else {
+            q = calloc(2, sizeof(long));
+            *(p + 1) = (long)q;
+            p = q;
+        }
+        if(cnt == parentheses_count) return begin;
     }
 }
-long* expression(){
+long* expr(){
     char c;
     while(true){
         c = fgetc(fp);
-        if(c == ' ' || c == '\n') continue;
-        if(c == '(') return parentheses();
-        else if(c == ')');
+        if(c == ' ') continue;
+        if(c == '\n'){
+            line_number++;
+            continue;
+        }
+        if(c == '('){
+            parentheses_count++;
+            return parentheses();
+        }else if(c == ')'){
+            parentheses_count--;
+            if(parentheses_count < 0){
+                printf("error %d : parnetheses don't correspond.\n", line_number);
+            }
+            return nil;
+        }
         else if('0' <= c && c <= '9') return number(c - '0');
-        //else return string(c);
+        else return symbol(c);
+    }
+}
+
+int var_count = 0;
+long* var[10] = {};
+long* value[10] = {};
+long* eval(long* p){
+    if(atom(p)){
+        for(int i = 0; i < var_count; i++){
+            if(eq(p, var[i]) == t) return value[i];
+        }
+        return p;
+    }
+    else{
+        long* token = car(p);
+        long* args = cdr(p);
+        if(equal(token, "eq")) return eq(eval(car(args)), eval(cdr(args)));
+        else if(equal(token, "car")) return car(eval(args));
+        else if(equal(token, "cdr")) return cdr(eval(p));
+        else if(equal(token, "atom")) return atom(p);
+        else if(equal(token, "cons")) return cons(eval(car(args)), eval(cdr(args)));
+    }
+}
+void print(long* p){
+    if(atom(p) == t) printf("%d",*p);
+    else{
+        if(atom(car(p)) == t){
+            print(car(p));
+        }else{
+            printf("(");
+            print(car(p));
+            printf(")");
+        }
+        printf(" ");
+        print(cdr(p));
     }
 }
 
 long main(int argc, char** argv){
     t = calloc(2, sizeof(long));
-    *t = 1;
     nil = calloc(2, sizeof(long));
+    *t = 1;
 
     fp = fopen(argv[1], "r");
-    printf("%d\n", *expression());
+    long* begin = expr();
+    print(begin);
     fclose(fp);
 }
