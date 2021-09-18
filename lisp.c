@@ -12,11 +12,13 @@ long* car(long* x);
 long* cdr(long* y);
 long* cons(long* x, long* y);
 
-bool equal(long* a, char* b);
 long* number(long i);
 char* function();
 long* parentheses();
 long* expr();
+
+bool equal(long* a, char* b);
+void print(long* p);
 
 // basic function
 long* atom(long* x){
@@ -54,8 +56,8 @@ long* cons(long* x, long* y){
 
 bool equal(long* a, char* b){
     for(int i = 0; i < 8; i++){
-        if(*a != (long)*b) return false;
-        else if(*b == '\0') return true;
+        if(a == nil && *b == '\0') return true;
+        else if(*((long*)*a) != (long)*b) return false;
         a = (long*)*(a + 1);
         b++;
     }
@@ -150,7 +152,7 @@ int var_count = 0;
 long* var[10] = {};
 long* value[10] = {};
 long* eval(long* p){
-    if(atom(p)){
+    if(atom(p) == t){
         for(int i = 0; i < var_count; i++){
             if(eq(p, var[i]) == t) return value[i];
         }
@@ -159,11 +161,11 @@ long* eval(long* p){
     else{
         long* token = car(p);
         long* args = cdr(p);
-        if(equal(token, "eq")) return eq(eval(car(args)), eval(cdr(args)));
-        else if(equal(token, "car")) return car(eval(args));
-        else if(equal(token, "cdr")) return cdr(eval(p));
-        else if(equal(token, "atom")) return atom(p);
-        else if(equal(token, "cons")) return cons(eval(car(args)), eval(cdr(args)));
+        if(equal(token, "eq")) return eq(eval(car(args)), eval(car(cdr(args))));
+        else if(equal(token, "car")) return car(eval(car(args)));
+        else if(equal(token, "cdr")) return cdr(eval(car(args)));
+        else if(equal(token, "atom")) return atom(car(args));
+        else if(equal(token, "cons")) return cons(eval(car(args)), eval(car(cdr(args))));
     }
 }
 void print(long* p){
@@ -189,5 +191,7 @@ long main(int argc, char** argv){
     fp = fopen(argv[1], "r");
     long* begin = expr();
     print(begin);
+    printf("\n");
+    print(eval(begin));
     fclose(fp);
 }
