@@ -45,12 +45,16 @@ long* eq(long* x, long* y){
     }
 }
 long* car(long* x){
-    if(atom(x) == t) return nil;
-    else return (long*)*x;
+    if(atom(x) == t){
+        printf("error : argument of car is pair.");
+        return nil;
+    }else return (long*)*x;
 }
 long* cdr(long* x){
-    if(atom(x) == t) return nil;
-    else return (long*)*(x + 1);
+    if(atom(x) == t){
+        printf("error : argument of cdr is pair.");
+        return nil;
+    }else return (long*)*(x + 1);
 }
 long* cons(long* x, long* y){
     long* p = calloc(2, sizeof(long));
@@ -59,7 +63,9 @@ long* cons(long* x, long* y){
     return p;
 }
 
+// compare string
 bool equal(long* a, char* b){
+    if(atom(a) == t) return false;
     for(int i = 0; i < 8; i++){
         if(a == nil && *b == '\0') return true;
         else if(*((long*)*a) != (long)*b) return false;
@@ -81,10 +87,7 @@ long* number(long i){
         if(c == '(') parentheses_count++;
         else if(c == ')') parentheses_count--;
         else if(c == '\n') line_number++;
-        if(c == '(' || c == ')' || c == ' ' || c == '\n'){
-            //printf("%d",*p);
-            return p;
-        }
+        if(c == '(' || c == ')' || c == ' ' || c == '\n') return p;
         *p *= 10;
         *p += c - '0';
     }
@@ -120,8 +123,9 @@ long* parentheses(){
     int cnt = parentheses_count - 1;
     while(true){
         *p = (long)expr();
-        if(*p == (long)nil) return begin;
-        else {
+        if(eq(p, nil) == t){
+            return begin;
+        }else{
             q = calloc(2, sizeof(long));
             *(p + 1) = (long)q;
             p = q;
@@ -147,7 +151,7 @@ long* expr(){
             if(parentheses_count < 0){
                 printf("error %d : parnetheses don't correspond.\n", line_number);
             }
-            return nil;
+            return (long*)0;
         }
         else if('0' <= c && c <= '9') return number(c - '0');
         else return symbol(c);
@@ -164,14 +168,14 @@ long* eval(long* p){
     long* args = cdr(p);
 
     // basic function
-    if(equal(token, "eq")) return eq(eval(car(args)), eval(car(cdr(args))));
+    if(equal(token, "atom")) return atom(car(args));
+    else if(equal(token, "eq")) return eq(eval(car(args)), eval(car(cdr(args))));
     else if(equal(token, "car")) return car(eval(car(args)));
     else if(equal(token, "cdr")) return cdr(eval(car(args)));
-    else if(equal(token, "atom")) return atom(car(args));
     else if(equal(token, "cons")) return cons(eval(car(args)), eval(car(cdr(args))));
 
     // special form
-    else if(equal(token, "cond")){
+    if(equal(token, "cond")){
         while(eq(args, nil) == nil){
             long* condition = car(car(args));
             long* expression = car(cdr(car(args)));
@@ -190,9 +194,19 @@ long* eval(long* p){
         return value[var_count - 1];
     }
     
+    bool is_lambda = false;
+    for(int i = var_count - 1; i >= 0; i--){
+        if(eq(token, var[i]) == t){
+            token = value[i];
+            is_lambda = true;
+            break;
+        }
+    }
+    if(!is_lambda){
+        return cons(token, eval(args));
+    }
     // lambda expression
-    else{
-        token = eval(token);
+    if(is_lambda){
         long* params = car(token);
         int n = 0;
         while(eq(params, nil) == nil){
@@ -214,8 +228,9 @@ long* eval(long* p){
 }
 
 void print(long* p){
-    if(atom(p) == t) printf("%d",*p);
-    else{
+    if(atom(p) == t){
+        printf("%d",*p);
+    }else{
         if(atom(car(p)) == t){
             print(car(p));
         }else{
@@ -236,8 +251,8 @@ int main(int argc, char** argv){
     fp = fopen(argv[1], "r");
     while(!feof(fp)){
         long* begin = expr();
-        print(begin);
-        printf("\n");
+        //print(begin);
+        //printf("\n");
         print(eval(begin));
         printf("\n");
     }
