@@ -136,8 +136,9 @@ long* parentheses(){
 
 long* expr(){
     char c;
-    while(true){
+    while(!feof(fp)){
         c = fgetc(fp);
+        if(c == EOF) return nil;
         if(c == ' ') continue;
         if(c == '\n'){
             line_number++;
