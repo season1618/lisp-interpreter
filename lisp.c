@@ -7,8 +7,8 @@ FILE* fp;
 long *t, *nil;
 
 int var_count = 0;
-long* var[10] = {};
-long* value[10] = {};
+long* var[100] = {};
+long* value[100] = {};
 
 // basic function
 long* atom(long* x);
@@ -45,14 +45,14 @@ long* eq(long* x, long* y){
     }
 }
 long* car(long* x){
-    if(atom(x) == t){
-        printf("error : argument of car is pair.");
+    if(atom(x) == t){print(x);
+        printf("error : argument of car is pair.\n");
         return nil;
     }else return (long*)*x;
 }
 long* cdr(long* x){
     if(atom(x) == t){
-        printf("error : argument of cdr is pair.");
+        printf("error : argument of cdr is pair.\n");
         return nil;
     }else return (long*)*(x + 1);
 }
@@ -106,6 +106,8 @@ long* symbol(char c){
         else if(c == '\n') line_number++;
         if(c == '(' || c == ')' || c == ' ' || c == '\n'){
             *(p + 1) = (long)nil;
+            if(equal(begin, "t")) return t;
+            if(equal(begin, "nil")) return nil;
             return begin;
         }
         long* q = calloc(2, sizeof(long));
