@@ -45,14 +45,14 @@ long* eq(long* x, long* y){
     }
 }
 long* car(long* x){
-    if(atom(x) == t){print(x);
-        printf("error : argument of car is pair.\n");
+    if(atom(x) == t){
+        //printf("error : argument of car is pair.\n");
         return nil;
     }else return (long*)*x;
 }
 long* cdr(long* x){
     if(atom(x) == t){
-        printf("error : argument of cdr is pair.\n");
+        //printf("error : argument of cdr is pair.\n");
         return nil;
     }else return (long*)*(x + 1);
 }
@@ -106,8 +106,6 @@ long* symbol(char c){
         else if(c == '\n') line_number++;
         if(c == '(' || c == ')' || c == ' ' || c == '\n'){
             *(p + 1) = (long)nil;
-            if(equal(begin, "t")) return t;
-            if(equal(begin, "nil")) return nil;
             return begin;
         }
         long* q = calloc(2, sizeof(long));
@@ -162,7 +160,8 @@ long* expr(){
 }
 
 long* eval(long* p){
-    if(atom(p) == t) return p;
+    if(equal(p, "t")) return t;
+    else if(equal(p, "nil")) return nil;
     for(int i = var_count - 1; i >= 0; i--){
         if(eq(p, var[i]) == t) return value[i];
     }
@@ -171,7 +170,7 @@ long* eval(long* p){
     long* args = cdr(p);
 
     // basic function
-    if(equal(token, "atom")) return atom(car(args));
+    if(equal(token, "atom")) return atom(eval(car(args)));
     else if(equal(token, "eq")) return eq(eval(car(args)), eval(car(cdr(args))));
     else if(equal(token, "car")) return car(eval(car(args)));
     else if(equal(token, "cdr")) return cdr(eval(car(args)));
@@ -187,6 +186,9 @@ long* eval(long* p){
         }
         return nil;
     }
+    else if(equal(token, "quote")){
+        return car(args);
+    }
     else if(equal(token, "lambda")){
         return args;
     }
@@ -196,20 +198,14 @@ long* eval(long* p){
         var_count++;
         return value[var_count - 1];
     }
-    
-    bool is_lambda = false;
-    for(int i = var_count - 1; i >= 0; i--){
-        if(eq(token, var[i]) == t){
-            token = value[i];
-            is_lambda = true;
-            break;
+    else{
+        // lambda expression
+        for(int i = var_count - 1; i >= 0; i--){
+            if(eq(token, var[i]) == t){
+                token = value[i];
+                break;
+            }
         }
-    }
-    if(!is_lambda){
-        return cons(token, eval(args));
-    }
-    // lambda expression
-    if(is_lambda){
         long* params = car(token);
         int n = 0;
         while(eq(params, nil) == nil){
